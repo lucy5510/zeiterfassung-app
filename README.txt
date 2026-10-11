@@ -1,26 +1,21 @@
-Zeiterfassung – PWA Version 22 (lokale Testversion)
+Zeiterfassung V23 – PDF und Büroimport (Testversion)
 
-Inhalt: index.html, manifest.webmanifest, service-worker.js, Icons.
+GitHub-Update: Alle sechs Dateien dieses Pakets in dasselbe Repository
+zeiterfassung-app hochladen und vorhandene Dateien ersetzen. GitHub Pages
+aktualisiert die App nach einigen Minuten. In Firefox ggf. Strg+F5.
 
-WICHTIG: Nicht direkt aus dem Chat oder per Doppelklick auf index.html testen.
-Die PWA braucht eine FESTE HTTPS-Adresse oder localhost. Die Daten bleiben
-auf dem jeweiligen Gerät/im Browserprofil; noch KEINE Serverdatenbank,
-keine echte Büroübertragung und keine Mehrbenutzer-Anmeldung.
+Mitarbeiteransicht: Tagesprotokoll -> „ALS PDF SPEICHERN“ öffnet
+den Firefox-Druckdialog. Als Ziel „Als PDF speichern“ auswählen.
+„BÜRO-DATEI HERUNTERLADEN“ erzeugt eine JSON-Datei für den Büroimport.
+Diese Datei als E-Mail-Anhang versenden, nicht die Gesamtsicherung.
 
-PC-Test (Python muss installiert sein):
-1. ZIP in einen Ordner entpacken.
-2. In diesem Ordner eine Konsole öffnen.
-3. python -m http.server 8000
-4. In demselben Browser http://localhost:8000/index.html öffnen.
-5. Tätigkeit starten, Browser-Tab schließen, dieselbe URL wieder öffnen.
-6. Testweise Internetverbindung ausschalten: localhost funktioniert weiter.
-7. Unter Browser-Einstellungen ggf. 'App installieren' auswählen.
+Büroansicht: „TAGESPROTOKOLL IMPORTIEREN“ -> JSON-Datei auswählen.
+Der Import erscheint in Tagesprotokollen und Monatsübersicht.
+Bei erneutem Import derselben Person/desselben Tages wird nach Ersetzen gefragt.
 
-Auf einem Handy benötigt die PWA eine feste HTTPS-Hosting-Adresse;
-localhost auf dem PC ist nicht vom Handy erreichbar.
-
-Lokale Speicherung: IndexedDB mit localStorage als zusätzlichem Fallback.
-Daten können trotzdem verloren gehen, z.B. bei gelöschten Browserdaten,
-privatem Modus, Speicherbeschränkungen oder Geräteverlust.
-Bitte regelmäßig 'Sicherung exportieren' nutzen. Nur Testdaten verwenden.
-Die automatische Synchronisierung mit dem Büro folgt in einer späteren Phase.
+ACHTUNG: Teststand. Mitarbeitername ist noch „Mitarbeiter/in – Test“,
+es gibt noch keine getrennten Konten. Büroansicht ist im selben Browser
+erreichbar und daher KEINE Zugangssicherung. Kein automatischer E-Mail-Versand.
+Die PDF-Erstellung erfolgt über den Druckdialog, nicht als direkter PDF-Download.
+Für echte personenbezogene Daten sind Datenschutz, Berechtigungen und ein
+freigegebener geschützter Übertragungsweg vorher zu klären.

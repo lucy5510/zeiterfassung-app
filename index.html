@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8"><meta name="theme-color" content="#2563eb"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon-192.png"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Zeiterfassung – PWA V22</title>
+<title>Zeiterfassung – PWA V23</title>
 <style>
 :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1f2937;background:#eef2f7}
 *{box-sizing:border-box} body{margin:0;padding:18px;display:flex;justify-content:center}
@@ -358,14 +358,14 @@ function protocol(){
      : '';
    return `<button style="text-align:left" onclick="editEntry(${i})"><span class="time">${isoDate(e.start).split('-').reverse().join('.')} · ${hhmm(e.start)}–${hhmm(e.end)}</span><br>${e.name}<br><span class="note">${duration(e.end-e.start)}</span>${correction}</button>`;
  }).join(''):`<p>Noch keine Tätigkeit erfasst.</p>`;
- screen('📋 Tagesprotokoll',`<p>Eintrag antippen, um ihn zu korrigieren.</p><div class="stack">${rows}${btn('➕ TÄTIGKEIT NACHTRAGEN','manualEntry()','primary')}${btn('ZURÜCK ZUM DIENST','menu()')}${btn('PROTOKOLL ANS BÜRO SENDEN','finished()','primary')}</div>`)
+ screen('📋 Tagesprotokoll',`<p>Eintrag antippen, um ihn zu korrigieren.</p><div class="stack">${rows}${btn('➕ TÄTIGKEIT NACHTRAGEN','manualEntry()','primary')}${btn('📄 ALS PDF SPEICHERN','printDay()')}${btn('📩 BÜRO-DATEI HERUNTERLADEN','exportOfficeDay()')}${btn('ZURÜCK ZUM DIENST','menu()')}${btn('TAGESABSCHLUSS (OHNE VERSAND)','finished()','primary')}</div>`)
 }
 
 function officeMain(){
   clearTick();
   screen('Zeiterfassung – Büro',`<div class="stack">
     <p class="note">Aktuell gespeicherte Tätigkeiten: ${entries.filter(e=>e.kind!=='marker').length}</p>
-    ${btn('📋 Tagesprotokolle','officeDailyList()')}${btn('📂 Gesicherte Zeiten importieren','importData()')}
+    ${btn('📋 Tagesprotokolle','officeDailyList()')}${btn('📥 TAGESPROTOKOLL IMPORTIEREN','importOfficeDay()','primary')}
     ${btn('📊 Monatsübersicht','officeMonth()')}
     ${btn('👤 Klienten','officeClients()')}
     ${btn('💾 Sicherung exportieren','exportData()')}
@@ -376,7 +376,7 @@ function officeMain(){
 function officeDailyList(){
   clearTick();
   const today=entries[0]?.start?new Date(entries[0].start).toLocaleDateString('de-DE'):'Kein Arbeitstag';
-   const historical=archive.map((day,i)=>`<button type="button" onclick="officeDailyOpen(${i})"><strong>Mitarbeiter/in – Test</strong><br><span class="note">${new Date(day.date).toLocaleDateString('de-DE')} · ${day.entries.filter(e=>e.kind!=='marker').length} Einträge · Archiv</span></button>`).join('');
+   const historical=archive.map((day,i)=>`<button type="button" onclick="officeDailyOpen(${i})"><strong>${safeText(day.employee||'Mitarbeiter/in – Test')}</strong><br><span class="note">${new Date(day.date).toLocaleDateString('de-DE')} · ${day.entries.filter(e=>e.kind!=='marker').length} Einträge · Archiv</span></button>`).join('');
   screen('📋 Tagesprotokolle',`
     <label>Datum<br><input type="date" value="${new Date().toISOString().slice(0,10)}"></label>
     <div class="stack">
@@ -399,10 +399,10 @@ function officeDailyOpen(archiveIndex=null){
   }).join('') : `<p>Hier sind keine abgeschlossenen Tätigkeiten gespeichert. Bitte in der Mitarbeiteransicht unter Tagesprotokoll prüfen, ob die Einträge vorhanden sind. Falls du eine andere HTML-Datei geöffnet hast, können deren Browserdaten getrennt sein.</p>`;
   const total=minusIntervals(real.map(x=>x.e).filter(e=>!excludedTime(e)),real.map(x=>x.e).filter(excludedTime));
   screen('📋 Tagesprotokoll',`
-    <p><strong>Mitarbeiter/in – Test</strong><br>${archiveIndex===null?todayDate(entries):todayDate(archive[archiveIndex].entries)}</p>
+    <p><strong>${safeText(archiveIndex===null?'Mitarbeiter/in – Test':(archive[archiveIndex].employee||'Mitarbeiter/in – Test'))}</strong><br>${archiveIndex===null?todayDate(entries):todayDate(archive[archiveIndex].entries)}</p>
     ${rows}
     <p><strong>Arbeitszeit ohne Doppelzählung:</strong> ${duration(total)}</p>
-    <div class="stack">${btn('‹ Zurück','officeDailyList()','back')}</div>`);
+    <div class="stack">${btn('📄 ALS PDF SPEICHERN',`printDay(${archiveIndex===null?'null':archiveIndex})`)}${btn('‹ Zurück','officeDailyList()','back')}</div>`);
 }
 function intervalUnion(items){
  const ranges=items.filter(e=>e.start&&e.end&&e.end>e.start)
@@ -539,13 +539,79 @@ function finished(){
   if(!entries.some(e=>e.name==='Protokoll gesendet'))entries.push({name:'Protokoll gesendet',start:now(),end:now(),kind:'marker'});
   active=null;persist();
   screen('✓ Tagesabschluss',`<h2>Arbeitstag beendet</h2><p>${entries.filter(e=>e.kind!=='marker').length} erfasste Tätigkeiten</p><p>Die Daten werden lokal im Browser gespeichert. Für eine zusätzliche Sicherung bitte die Datei herunterladen. Es findet noch keine Übertragung an ein echtes Büro statt.</p><div class="stack">
-    ${btn('💾 TAGESPROTOKOLL SICHERN','exportData()','primary')}
+    ${btn('📄 TAGESPROTOKOLL ALS PDF','printDay()','primary')}${btn('📩 TAGESPROTOKOLL FÜR BÜRO EXPORTIEREN','exportOfficeDay()','primary')}${btn('💾 GESAMTSICHERUNG','exportData()')}
     ${btn('🏢 ZUR BÜROANSICHT','officeMain()')}
     ${btn('📋 PROTOKOLL ANSEHEN','officeDailyOpen()')}
     ${btn('🏠 STARTMENÜ','welcome()')}
   </div>`);
 }
 
+function daySource(index=null){
+ return index===null?entries:(archive[index]?.entries||[]);
+}
+function dateOfDay(items){
+ const first=items.find(e=>e.start);
+ return first?isoDate(new Date(first.start)):isoDate(now());
+}
+function safeText(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function downloadFile(filename,content,mime){
+ const blob=new Blob([content],{type:mime});const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function officeDayData(index=null){
+ const source=daySource(index),date=dateOfDay(source);
+ const selected=source.filter(e=>e.kind!=='marker'&&e.start&&e.end).map(e=>({
+  name:String(e.name||''),kind:String(e.kind||'normal'),start:new Date(e.start).toISOString(),end:new Date(e.end).toISOString(),
+  corrected:!!e.corrected,correctionNote:String(e.correctionNote||''),
+  original:e.original?{start:new Date(e.original.start).toISOString(),end:new Date(e.original.end).toISOString()}:null
+ }));
+ return {format:'zeiterfassung-office-day',version:1,employee:'Mitarbeiter/in – Test',date,entries:selected,exportedAt:new Date().toISOString()};
+}
+function exportOfficeDay(index=null){
+ const data=officeDayData(index);
+ if(!data.entries.length){alert('Keine abgeschlossenen Einträge für den Export vorhanden.');return}
+ downloadFile('Tagesprotokoll_'+data.date+'.json',JSON.stringify(data,null,2),'application/json;charset=utf-8');
+}
+function printDay(index=null){
+ const data=officeDayData(index);
+ if(!data.entries.length){alert('Keine abgeschlossenen Einträge vorhanden.');return}
+ const work=data.entries.map(e=>({...e,start:new Date(e.start),end:new Date(e.end)}));
+ const total=minusIntervals(work.filter(e=>!excludedTime(e)),work.filter(excludedTime));
+ const rows=work.map(e=>`<tr><td>${safeText(e.start.toLocaleDateString('de-DE'))}</td><td>${safeText(hhmm(e.start))}</td><td>${safeText(hhmm(e.end))}</td><td>${safeText(e.name)}${e.corrected?'<br><small>Korrigiert: '+safeText(e.correctionNote)+'</small>':''}</td><td>${safeText(duration(e.end-e.start))}</td></tr>`).join('');
+ const w=window.open('','_blank');
+ if(!w){alert('Firefox hat das Druckfenster blockiert. Bitte Pop-ups für diese Seite erlauben.');return}
+ w.document.write(`<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Tagesprotokoll ${safeText(data.date)}</title><style>body{font:12px Arial,sans-serif;margin:28px;color:#222}h1{font-size:20px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #aaa;padding:7px;text-align:left;vertical-align:top}th{background:#eee}small{color:#555}p{margin:12px 0}@media print{button{display:none}}</style></head><body><h1>Tagesprotokoll – ${safeText(data.date)}</h1><p>${safeText(data.employee)}</p><table><thead><tr><th>Datum</th><th>Beginn</th><th>Ende</th><th>Tätigkeit</th><th>Dauer</th></tr></thead><tbody>${rows}</tbody></table><p><strong>Arbeitszeit ohne Doppelzählung:</strong> ${safeText(duration(total))}</p><p><small>Testversion. Bitte vor dem Versand auf Vollständigkeit prüfen.</small></p><button onclick="window.print()">Drucken / Als PDF speichern</button></body></html>`);
+ w.document.close();w.focus();
+ setTimeout(()=>w.print(),350);
+}
+function importOfficeDay(){
+ const input=document.createElement('input');input.type='file';input.accept='.json,application/json';
+ input.onchange=async()=>{
+  try{
+   if(!input.files?.length)return;
+   const d=JSON.parse(await input.files[0].text());
+   if(d.format!=='zeiterfassung-office-day'||d.version!==1||!/^\d{4}-\d{2}-\d{2}$/.test(d.date)||!Array.isArray(d.entries)||!d.entries.length||d.entries.length>2000)throw Error('Keine gültige Büro-Tagesdatei');
+   const imported=d.entries.map(e=>{
+    if(typeof e.name!=='string'||e.name.length>300||typeof e.kind!=='string')throw Error('Ungültiger Eintrag');
+    const start=new Date(e.start),end=new Date(e.end);
+    if(!Number.isFinite(+start)||!Number.isFinite(+end)||end<=start||end-start>36*3600000)throw Error('Ungültige Uhrzeit');
+    if(isoDate(start)!==d.date)throw Error('Abweichendes Datum');
+    let original=null;
+    if(e.original){const a=new Date(e.original.start),b=new Date(e.original.end);if(!Number.isFinite(+a)||!Number.isFinite(+b))throw Error('Ungültige Korrektur');original={start:a,end:b}}
+    return {name:e.name,kind:e.kind,start,end,corrected:!!e.corrected,correctionNote:String(e.correctionNote||'').slice(0,500),original};
+   });
+   const id=d.date+'|'+d.employee;
+   if(archive.some(a=>a.officeImportId===id)){
+    if(!confirm('Für diesen Mitarbeiter und Tag ist bereits ein Büroimport vorhanden. Vorhandenen Import ersetzen?'))return;
+    archive=archive.filter(a=>a.officeImportId!==id);
+   }
+   archive.push({date:d.date,entries:imported,officeImportId:id,employee:String(d.employee||'Unbekannt').slice(0,100)});
+   persist();alert('Tagesprotokoll importiert. Es ist in der Büroansicht und Monatsübersicht verfügbar.');officeDailyList();
+  }catch(e){alert('Import nicht möglich: '+e.message)}
+ };
+ input.click();
+}
 function exportData(){
   persist();
   const payload=JSON.stringify(statePayload());
