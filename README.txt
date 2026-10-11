@@ -1,21 +1,22 @@
-Zeiterfassung V23 – PDF und Büroimport (Testversion)
+ZEITERFASSUNG VERSION 24 – TESTPAKET
 
-GitHub-Update: Alle sechs Dateien dieses Pakets in dasselbe Repository
-zeiterfassung-app hochladen und vorhandene Dateien ersetzen. GitHub Pages
-aktualisiert die App nach einigen Minuten. In Firefox ggf. Strg+F5.
+NEU: Unter Büroansicht > Tagesprotokolle > Datum stehen jetzt beide
+Schaltflächen: „ALS PDF SPEICHERN“ und „FÜR BÜRO HERUNTERLADEN (JSON)“.
+Die JSON-Datei ist für die Funktion „TAGESPROTOKOLL IMPORTIEREN“.
 
-Mitarbeiteransicht: Tagesprotokoll -> „ALS PDF SPEICHERN“ öffnet
-den Firefox-Druckdialog. Als Ziel „Als PDF speichern“ auswählen.
-„BÜRO-DATEI HERUNTERLADEN“ erzeugt eine JSON-Datei für den Büroimport.
-Diese Datei als E-Mail-Anhang versenden, nicht die Gesamtsicherung.
+UPDATE BEI GITHUB:
+1. ZIP entpacken.
+2. Im Repository zeiterfassung-app > Add file > Upload files
+   alle sechs Dateien hochladen und ersetzen.
+3. Commit changes.
+4. Nach Bereitstellung die GitHub-Pages-App neu laden.
 
-Büroansicht: „TAGESPROTOKOLL IMPORTIEREN“ -> JSON-Datei auswählen.
-Der Import erscheint in Tagesprotokollen und Monatsübersicht.
-Bei erneutem Import derselben Person/desselben Tages wird nach Ersetzen gefragt.
+Vorher die vorhandenen Testdaten über „Sicherung exportieren“ sichern.
+Die App benutzt weiterhin dieselbe lokale Datenbank wie V22 und V23.
+Browserdaten nicht löschen. Nur Testdaten verwenden.
 
-ACHTUNG: Teststand. Mitarbeitername ist noch „Mitarbeiter/in – Test“,
-es gibt noch keine getrennten Konten. Büroansicht ist im selben Browser
-erreichbar und daher KEINE Zugangssicherung. Kein automatischer E-Mail-Versand.
-Die PDF-Erstellung erfolgt über den Druckdialog, nicht als direkter PDF-Download.
-Für echte personenbezogene Daten sind Datenschutz, Berechtigungen und ein
-freigegebener geschützter Übertragungsweg vorher zu klären.
+ACHTUNG: Dies ist keine fertige produktive Anwendung.
+Alle Mitarbeiter tragen derzeit den Testnamen „Mitarbeiter/in – Test“;
+mehrere Mitarbeiter können so im Büro noch nicht sicher unterschieden werden.
+Kein echter Mailversand und keine getrennten Benutzerberechtigungen.
+Vor echten Klienten-/Mitarbeiterdaten Datenschutz und Übertragungsweg klären.

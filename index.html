@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8"><meta name="theme-color" content="#2563eb"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon-192.png"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Zeiterfassung – PWA V23</title>
+<title>Zeiterfassung – PWA V24</title>
 <style>
 :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1f2937;background:#eef2f7}
 *{box-sizing:border-box} body{margin:0;padding:18px;display:flex;justify-content:center}
@@ -402,7 +402,7 @@ function officeDailyOpen(archiveIndex=null){
     <p><strong>${safeText(archiveIndex===null?'Mitarbeiter/in – Test':(archive[archiveIndex].employee||'Mitarbeiter/in – Test'))}</strong><br>${archiveIndex===null?todayDate(entries):todayDate(archive[archiveIndex].entries)}</p>
     ${rows}
     <p><strong>Arbeitszeit ohne Doppelzählung:</strong> ${duration(total)}</p>
-    <div class="stack">${btn('📄 ALS PDF SPEICHERN',`printDay(${archiveIndex===null?'null':archiveIndex})`)}${btn('‹ Zurück','officeDailyList()','back')}</div>`);
+    <div class="stack">${btn('📄 ALS PDF SPEICHERN',`printDay(${archiveIndex===null?'null':archiveIndex})`)}${btn('📩 FÜR BÜRO HERUNTERLADEN (JSON)',`exportOfficeDay(${archiveIndex===null?'null':archiveIndex})`)}${btn('‹ Zurück','officeDailyList()','back')}</div>`);
 }
 function intervalUnion(items){
  const ranges=items.filter(e=>e.start&&e.end&&e.end>e.start)
@@ -566,7 +566,7 @@ function officeDayData(index=null){
   corrected:!!e.corrected,correctionNote:String(e.correctionNote||''),
   original:e.original?{start:new Date(e.original.start).toISOString(),end:new Date(e.original.end).toISOString()}:null
  }));
- return {format:'zeiterfassung-office-day',version:1,employee:'Mitarbeiter/in – Test',date,entries:selected,exportedAt:new Date().toISOString()};
+ return {format:'zeiterfassung-office-day',version:1,employee:index===null?'Mitarbeiter/in – Test':String(archive[index]?.employee||'Mitarbeiter/in – Test'),date,entries:selected,exportedAt:new Date().toISOString()};
 }
 function exportOfficeDay(index=null){
  const data=officeDayData(index);
