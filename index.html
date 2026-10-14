@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8"><meta name="theme-color" content="#2563eb"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon-192.png"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Zeiterfassung – PWA V25</title>
+<title>Zeiterfassung – PWA V26</title>
 <style>
 :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1f2937;background:#eef2f7}
 *{box-sizing:border-box} body{margin:0;padding:18px;display:flex;justify-content:center}
@@ -32,6 +32,7 @@ function startEntry(name,kind='normal'){active={name,start:now(),kind}; runningS
 function go(next){
   const routes={
     'menu()':menu,
+    'officeReturn()':officeReturn,
     'destinations()':destinations,
     'clientTime()':clientTime,
     'afterClient()':afterClient,
@@ -105,7 +106,7 @@ const manualOptions=[
  '🚗 Fahrt zum Teamtreffen','🚗 Fahrt zur Supervision','🚗 Fahrt zum Treffpunkt für Fahrgemeinschaft',
  '👤 Klientenzeit','📞 Telefonat','⛽ Tanken','📱 Kommunikation / Nachrichten','✉️ E-Mails',
  '📝 Dokumentation','📝 Tourenplanung','📝 Termin vorbereiten','📝 Termin nachbereiten',
- '📝 Fachliteratur','📝 Bericht verfassen','🎒 Tasche packen',
+ '📝 Fachliteratur','📝 Bericht verfassen','📝 Fachliche Reflexion','🎒 Tasche packen',
  '👥 Kollegialer Austausch / Fallbesprechung','👥 Teamtreffen','🧑‍🏫 Supervision',
  '☕ Pause','🚻 Toilettenpause','⏸ Private Unterbrechung','➕ Sonstige Tätigkeit'
 ];
@@ -133,6 +134,7 @@ function saveManualEntry(){
 function menu(){clearTick();screen('Hauptmenü',`<div class="stack">
 ${btn('📱 Kommunikation / Nachrichten',`activity('📱 Kommunikation / Nachrichten','menu()')`)}
 ${btn('✉️ E-Mails',`activity('✉️ E-Mails','menu()')`)}
+${btn('📞 Telefonat',`activity('📞 Telefonat','menu()')`)}
 ${btn('📝 Bürotätigkeit',`office('menu()')`)}
 ${btn('🎒 Tasche packen',`activity('🎒 Tasche packen','menu()')`)}
 ${btn('🚶 Zum Auto',`activity('🚶 Zum Auto','destinations()')`)}
@@ -141,14 +143,14 @@ ${btn('➕ Sonstige Tätigkeit',`activity('➕ Sonstige Tätigkeit','menu()')`)}
 ${btn('☕ Pause',`activity('☕ Pause','menu()')`)}
 ${btn('🚻 Toilettenpause',`activity('🚻 Toilettenpause','menu()')`)}
 ${btn('⏸ Privat unterbrechen',`activity('⏸ Private Unterbrechung','menu()')`)}
-</div>${btn('🔴 DIENST BEENDEN','protocol()','danger')}`)}
+</div>${btn('‹ Zurück','welcome()','back')}${btn('🔴 DIENST BEENDEN','protocol()','danger')}`)}
 function destinations(){clearTick();screen('Wohin möchtest du fahren?',`<div class="stack">
 ${btn('👤 Zu einem Klienten','clients(false)')}
 ${btn('👥 Zu einem Teamtreffen',`eventTravelChoice('Teamtreffen')`)}
 ${btn('🧑‍🏫 Zur Supervision',`eventTravelChoice('Supervision')`)}
 ${btn('🤝 Zum Treffpunkt mit einem Klienten','clients(true)')}
 ${btn('🅿️ Öffentlichen Parkplatz anfahren',`drive('🚗 Fahrt zum öffentlichen Parkplatz','parking()')`)}
-${btn('🏠 Nach Hause',`drive('🚗 Fahrt nach Hause','homeArrival()')`)}</div>`)}
+${btn('🏠 Nach Hause',`drive('🚗 Fahrt nach Hause','homeArrival()')`)}</div>${btn('‹ Zurück','menu()','back')}`)}
 
 
 function eventTravelChoice(type){
@@ -245,6 +247,7 @@ function driveScreen(){
  clearTick();screen(active.name,`<p>läuft seit <span class="time">${hhmm(active.start)}</span></p><div class="timer" id="timer">${timerText()}</div><div class="stack">
 ${btn('📞 Telefonat',"parallel('📞 Telefonat')")}
 ${btn('⛽ Tanken',"parallel('⛽ Tanken')")}
+${btn('👥 Kollegialer Austausch / Fallbesprechung',"parallel('👥 Kollegialer Austausch / Fallbesprechung')")}
 ${btn('⏸ Privat unterbrechen','privateBreak()')}
 ${btn('FAHRT BEENDEN',`endEntry('${active.next}')`,'primary')}</div>`);
  tick=setInterval(updateTimer,250)
@@ -294,15 +297,16 @@ function afterClientReturn(){
   ${btn('🚗 Direkt im Auto','afterClient()')}
   </div>`);
 }
-function afterClient(){clearTick();screen('Klientenzeit beendet',`<h2>Was möchtest du jetzt machen?</h2><div class="stack">${btn('🚗 Nächsten Klienten anfahren','clients(false)')}${btn('🅿️ Öffentlichen Parkplatz anfahren',`drive('🚗 Fahrt zum öffentlichen Parkplatz','parking()')`)}${btn('🏠 Nach Hause fahren',`drive('🚗 Fahrt nach Hause','homeArrival()')`)}</div>`)}
+function afterClient(){clearTick();screen('Klientenzeit beendet',`<h2>Was möchtest du jetzt machen?</h2><div class="stack">${btn('📱 Handy / Nachrichten überprüfen',`activity('📱 Kommunikation / Nachrichten','afterClient()')`)}${btn('📞 Telefonat',`activity('📞 Telefonat','afterClient()')`)}${btn('🚗 Nächsten Klienten anfahren','clients(false)')}${btn('🅿️ Öffentlichen Parkplatz anfahren',`drive('🚗 Fahrt zum öffentlichen Parkplatz','parking()')`)}${btn('🏠 Nach Hause fahren',`drive('🚗 Fahrt nach Hause','homeArrival()')`)}</div>${btn('‹ Zurück','afterClientReturn()','back')}`)}
 function parking(){clearTick();screen('🅿️ Öffentlicher Parkplatz',`<h2>Was möchtest du jetzt machen?</h2><div class="stack">
 ${btn('📝 Bürotätigkeit',`office('parking()')`)}${btn('📱 Kommunikation / Nachrichten',`activity('📱 Kommunikation / Nachrichten','parking()')`)}
 ${btn('✉️ E-Mails',`activity('✉️ E-Mails','parking()')`)}${btn('📞 Telefonat',`activity('📞 Telefonat','parking()')`)}
 ${btn('☕ Pause',`activity('☕ Pause','parking()')`)}${btn('🚻 Toilettenpause',`activity('🚻 Toilettenpause','parking()')`)}
-${btn('➕ Sonstige Tätigkeit',`activity('➕ Sonstige Tätigkeit','parking()')`)}${btn('🚗 WEITERFAHREN','destinations()','primary')}</div>`)}
+${btn('➕ Sonstige Tätigkeit',`activity('➕ Sonstige Tätigkeit','parking()')`)}${btn('🚗 WEITERFAHREN','destinations()','primary')}</div>${btn('‹ Zurück','destinations()','back')}`)}
 function homeArrival(){clearTick();screen('Fahrt nach Hause beendet',`<h2>Was möchtest du jetzt machen?</h2><div class="stack">${btn('🚶 Fußweg nach Hause',`activity('🚶 Fußweg nach Hause','home()')`)}${btn('👤 Direkt nach Hause','home()')}</div>`)}
-function home(){clearTick();screen('🏠 Zuhause',`<div class="stack">${btn('📝 Bürotätigkeit',`office('home()')`)}${btn('📱 Kommunikation / Nachrichten',`activity('📱 Kommunikation / Nachrichten','home()')`)}${btn('✉️ E-Mails',`activity('✉️ E-Mails','home()')`)}${btn('☕ Pause',`activity('☕ Pause','home()')`)}${btn('🚗 Zum Auto',`activity('🚶 Zum Auto','destinations()')`)}</div>${btn('🔴 ARBEITSTAG BEENDEN','protocol()','danger')}`)}
-function office(ret){screen('📝 Bürotätigkeit',`<div class="stack">${['Dokumentation','Tourenplanung','Termin vorbereiten','Termin nachbereiten','Fachliteratur','Bericht verfassen','Sonstiges'].map(x=>`<button onclick="activity('📝 ${x}','${ret}')">${x}</button>`).join('')}</div>`)}
+function home(){clearTick();screen('🏠 Zuhause',`<div class="stack">${btn('📝 Bürotätigkeit',`office('home()')`)}${btn('📱 Kommunikation / Nachrichten',`activity('📱 Kommunikation / Nachrichten','home()')`)}${btn('✉️ E-Mails',`activity('✉️ E-Mails','home()')`)}${btn('☕ Pause',`activity('☕ Pause','home()')`)}${btn('🚗 Zum Auto',`activity('🚶 Zum Auto','destinations()')`)}</div>${btn('‹ Zurück','menu()','back')}${btn('🔴 ARBEITSTAG BEENDEN','protocol()','danger')}`)}
+function office(ret){window._officeReturn=ret;screen('📝 Bürotätigkeit',`<div class="stack">${['Dokumentation','Tourenplanung','Termin vorbereiten','Termin nachbereiten','Fachliteratur','Bericht verfassen','Sonstiges','Fachliche Reflexion'].map(x=>`<button onclick="activity('📝 ${x}','officeReturn()')">${x}</button>`).join('')}</div>${btn('‹ Zurück',ret,'back')}`)}
+function officeReturn(){office(window._officeReturn||'menu()')}
 function inputTime(d){
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
