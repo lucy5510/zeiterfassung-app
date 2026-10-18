@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8"><meta name="theme-color" content="#2563eb"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon-192.png"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Zeiterfassung – PWA V26</title>
+<title>Zeiterfassung – PWA V27</title>
 <style>
 :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1f2937;background:#eef2f7}
 *{box-sizing:border-box} body{margin:0;padding:18px;display:flex;justify-content:center}
@@ -22,6 +22,7 @@ input{width:100%;padding:13px;border:1px solid #d0d5dd;border-radius:12px;font-s
 <script>
 const app=document.getElementById('app');
 let entries=[], active=null, tick=null, currentClient='F-Sch', pausedDrive=null, eventViaCarpool=false, currentEvent='', archive=[];
+let employeeName='', deletedEntries=[];
 const now=()=>new Date();
 const hhmm=d=>d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
 const duration=ms=>{let s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),x=s%60;return h?`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`};
@@ -83,8 +84,8 @@ function beginService(){
  if(entries.length&&!entries.some(e=>e.name==='Protokoll gesendet')){
    alert('Es gibt einen begonnenen Arbeitstag. Bitte diesen zuerst fortsetzen und abschließen.');return;
  }
- if(entries.length){archive.push({date:entries[0]?.start||now(),entries:entries.map(e=>({...e}))});}
- entries=[];active=null;pausedDrive=null;
+ if(entries.length){archive.push({date:entries[0]?.start||now(),entries:entries.map(e=>({...e})),employee:employeeLabel(),deletedEntries:deletedEntries.map(e=>({...e}))});}
+ entries=[];deletedEntries=[];active=null;pausedDrive=null;
  entries.push({name:'Dienst begonnen',start:now(),end:now(),kind:'marker'});persist();menu();
 }
 function isoDate(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
@@ -97,8 +98,8 @@ function createManualDay(){
  const val=document.getElementById('dayDate').value;
  if(!val)return alert('Bitte ein Datum wählen.');
  if(entries.length&&!entries.some(e=>e.name==='Protokoll gesendet'))return alert('Bitte den begonnenen Arbeitstag zuerst abschließen.');
- if(entries.length)archive.push({date:entries[0].start,entries:entries.map(e=>({...e}))});
- const d=new Date(val+'T08:00:00');entries=[{name:'Dienst begonnen',start:d,end:d,kind:'marker'}];active=null;persist();protocol();
+ if(entries.length)archive.push({date:entries[0].start,entries:entries.map(e=>({...e})),employee:employeeLabel(),deletedEntries:deletedEntries.map(e=>({...e}))});
+ const d=new Date(val+'T08:00:00');entries=[{name:'Dienst begonnen',start:d,end:d,kind:'marker'}];active=null;deletedEntries=[];persist();protocol();
 }
 const manualOptions=[
  '🚶 Fußweg Wohnung zum Auto','🚶 Fußweg zum Klienten','🚶 Fußweg zum Auto','🚶 Fußweg nach Hause',
@@ -314,20 +315,35 @@ function editEntry(i){
   clearTick();
   const e=entries[i];
   if(!e || e.kind==='marker') return protocol();
+  const category=e.category||manualOptions.find(x=>e.name===x||e.name.startsWith(x+' '))||'➕ Sonstige Tätigkeit';
+  const detail=e.name===category?'':e.name;
   screen('✏️ Eintrag korrigieren',`
-    <p><strong>${e.name}</strong></p>
+    <p><strong>${escapeText(e.name)}</strong></p>
     <div class="stack">
+      <label>Tätigkeit<br><select id="editCategory" style="width:100%;padding:12px">${manualOptions.map(n=>`<option value="${escapeText(n)}" ${n===category?'selected':''}>${escapeText(n)}</option>`).join('')}</select></label>
+      <label>Eigene Bezeichnung (optional)<br><input id="editDetail" type="text" value="${escapeText(detail)}" placeholder="z. B. Fahrt zu A-Abe"></label>
       <label>Datum<br><input id="editDate" type="date" value="${isoDate(e.start)}"></label>
       <label>Beginn<br><input id="editStart" type="time" value="${inputTime(e.start)}"></label>
       <label>Ende<br><input id="editEnd" type="time" value="${inputTime(e.end)}"></label>
-      <label>Notiz zur Korrektur<br><input id="editNote" type="text" value="${e.correctionNote||''}" placeholder="optional"></label>
+      <label>Notiz zur Korrektur<br><input id="editNote" type="text" value="${escapeText(e.correctionNote||'')}" placeholder="optional"></label>
       <button class="primary" type="button" id="saveCorrectionBtn">ÄNDERUNG SPEICHERN</button>
       <button type="button" id="cancelCorrectionBtn">Abbrechen</button>
+      <button type="button" class="danger" id="deleteEntryBtn">🗑️ EINTRAG LÖSCHEN</button>
     </div>
     <p id="editError" class="note"></p>
   `);
   document.getElementById('saveCorrectionBtn').addEventListener('click',()=>saveCorrection(i));
   document.getElementById('cancelCorrectionBtn').addEventListener('click',protocol);
+  document.getElementById('deleteEntryBtn').addEventListener('click',()=>deleteEntry(i));
+}
+function deleteEntry(i){
+  const e=entries[i];
+  if(!e||e.kind==='marker')return;
+  if(!confirm(`Möchtest du den Eintrag „${e.name}“ wirklich löschen?`))return;
+  deletedEntries.push({name:e.name,kind:e.kind,start:e.start,end:e.end,deletedAt:now(),note:'Eintrag im Tagesprotokoll gelöscht'});
+  entries.splice(i,1);
+  persist();
+  protocol();
 }
 function timeOnSameDate(base,value){
   const parts=value.split(':').map(Number);
@@ -353,8 +369,13 @@ function saveCorrection(i){
     return;
   }
   if(!e.original){
-    e.original={start:new Date(e.start),end:new Date(e.end)};
+    e.original={start:new Date(e.start),end:new Date(e.end),name:e.name};
   }
+  const category=document.getElementById('editCategory').value;
+  const detail=document.getElementById('editDetail').value.trim().slice(0,200);
+  e.category=category;
+  e.detail=detail;
+  e.name=detail||category;
   e.start=ns;
   e.end=ne;
   e.corrected=true;
@@ -370,7 +391,7 @@ function protocol(){
      : '';
    return `<button style="text-align:left" onclick="editEntry(${i})"><span class="time">${isoDate(e.start).split('-').reverse().join('.')} · ${hhmm(e.start)}–${hhmm(e.end)}</span><br>${e.name}<br><span class="note">${duration(e.end-e.start)}</span>${correction}</button>`;
  }).join(''):`<p>Noch keine Tätigkeit erfasst.</p>`;
- screen('📋 Tagesprotokoll',`<p>Eintrag antippen, um ihn zu korrigieren.</p><div class="stack">${rows}${btn('➕ TÄTIGKEIT NACHTRAGEN','manualEntry()','primary')}${btn('📄 ALS PDF SPEICHERN','printDay()')}${btn('📩 BÜRO-DATEI HERUNTERLADEN','exportOfficeDay()')}${btn('ZURÜCK ZUM DIENST','menu()')}${btn('TAGESABSCHLUSS (OHNE VERSAND)','finished()','primary')}</div>`)
+ screen('📋 Tagesprotokoll',`${employeeInput()}<p>Eintrag antippen, um ihn zu korrigieren.</p><div class="stack">${rows}${btn('➕ TÄTIGKEIT NACHTRAGEN','manualEntry()','primary')}${btn('📄 ALS PDF SPEICHERN','printDay()')}${btn('📩 BÜRO-DATEI HERUNTERLADEN','exportOfficeDay()')}${btn('ZURÜCK ZUM DIENST','menu()')}${btn('TAGESABSCHLUSS (OHNE VERSAND)','finished()','primary')}</div>`)
 }
 
 function officeMain(){
@@ -385,14 +406,23 @@ function officeMain(){
     ${btn('‹ Zurück','welcome()','back')}
   </div>`);
 }
+function employeeLabel(){return employeeName.trim()||'Mitarbeiter/in – Test'}
+function saveEmployeeName(value){
+  employeeName=String(value||'').trim().slice(0,100);
+  persist();
+}
+function employeeInput(){
+  return `<label>Mitarbeiter/in<br><input id="employeeName" type="text" maxlength="100" placeholder="Vor- und Nachname" value="${escapeText(employeeName)}" oninput="saveEmployeeName(this.value)"></label>`;
+}
 function officeDailyList(){
   clearTick();
   const today=entries[0]?.start?new Date(entries[0].start).toLocaleDateString('de-DE'):'Kein Arbeitstag';
-   const historical=archive.map((day,i)=>`<button type="button" onclick="officeDailyOpen(${i})"><strong>${safeText(day.employee||'Mitarbeiter/in – Test')}</strong><br><span class="note">${new Date(day.date).toLocaleDateString('de-DE')} · ${day.entries.filter(e=>e.kind!=='marker').length} Einträge · Archiv</span></button>`).join('');
+   const historical=archive.map((day,i)=>`<button type="button" onclick="officeDailyOpen(${i})"><strong>${safeText(day.employee||employeeLabel())}</strong><br><span class="note">${new Date(day.date).toLocaleDateString('de-DE')} · ${day.entries.filter(e=>e.kind!=='marker').length} Einträge · Archiv</span></button>`).join('');
   screen('📋 Tagesprotokolle',`
+    ${employeeInput()}
     <label>Datum<br><input type="date" value="${new Date().toISOString().slice(0,10)}"></label>
     <div class="stack">
-      <button type="button" onclick="officeDailyOpen()"><strong>Mitarbeiter/in – Test</strong><br><span class="note">${today} · ${entries.filter(e=>e.kind!=='marker').length} gespeicherte Einträge · Protokoll öffnen</span></button>
+      <button type="button" onclick="officeDailyOpen()"><strong>${safeText(employeeLabel())}</strong><br><span class="note">${today} · ${entries.filter(e=>e.kind!=='marker').length} gespeicherte Einträge · Protokoll öffnen</span></button>
       ${historical}
       ${btn('‹ Zurück','officeMain()','back')}
     </div>`);
@@ -409,11 +439,14 @@ function officeDailyOpen(archiveIndex=null){
     }
     return `<div class="row"><span class="time">${isoDate(e.start).split('-').reverse().join('.')} · ${hhmm(e.start)}–${hhmm(e.end)}</span><br>${e.name}${correction}</div>`;
   }).join('') : `<p>Hier sind keine abgeschlossenen Tätigkeiten gespeichert. Bitte in der Mitarbeiteransicht unter Tagesprotokoll prüfen, ob die Einträge vorhanden sind. Falls du eine andere HTML-Datei geöffnet hast, können deren Browserdaten getrennt sein.</p>`;
-  const total=minusIntervals(real.map(x=>x.e).filter(e=>!excludedTime(e)),real.map(x=>x.e).filter(excludedTime));
+     const removed=(archiveIndex===null?deletedEntries:(archive[archiveIndex].deletedEntries||[]));
+   const removedHtml=removed.length?`<h3>Gelöschte Einträge (Änderungsnachweis)</h3>${removed.map(e=>`<div class="row">🗑️ ${safeText(e.name)} · ${hhmm(new Date(e.start))}–${hhmm(new Date(e.end))}</div>`).join('')}`:'';
+   const total=minusIntervals(real.map(x=>x.e).filter(e=>!excludedTime(e)),real.map(x=>x.e).filter(excludedTime));
   screen('📋 Tagesprotokoll',`
-    <p><strong>${safeText(archiveIndex===null?'Mitarbeiter/in – Test':(archive[archiveIndex].employee||'Mitarbeiter/in – Test'))}</strong><br>${archiveIndex===null?todayDate(entries):todayDate(archive[archiveIndex].entries)}</p>
-    ${rows}
-    <p><strong>Arbeitszeit ohne Doppelzählung:</strong> ${duration(total)}</p>
+    <p><strong>${safeText(archiveIndex===null?employeeLabel():(archive[archiveIndex].employee||employeeLabel()))}</strong><br>${archiveIndex===null?todayDate(entries):todayDate(archive[archiveIndex].entries)}</p>
+     ${rows}
+     ${removedHtml}
+     <p><strong>Arbeitszeit ohne Doppelzählung:</strong> ${duration(total)}</p>
     <div class="stack">${btn('📄 ALS PDF SPEICHERN',`printDay(${archiveIndex===null?'null':archiveIndex})`)}${btn('📩 FÜR BÜRO HERUNTERLADEN (JSON)',`exportOfficeDay(${archiveIndex===null?'null':archiveIndex})`)}${btn('‹ Zurück','officeDailyList()','back')}</div>`);
 }
 function intervalUnion(items){
@@ -440,7 +473,7 @@ function minusIntervals(work,exclude){
  }
  return total;
 }
-function excludedTime(e){return e.kind==='private'||e.name.includes('Private Unterbrechung')||e.name.includes('☕ Pause');}
+function excludedTime(e){const n=e.category||e.name;return e.kind==='private'||n.includes('Private Unterbrechung')||n.includes('☕ Pause');}
 function officeMonth(month){
  clearTick();
  const selected=month||new Date().toLocaleDateString('sv-SE').slice(0,7);
@@ -453,7 +486,7 @@ function officeMonth(month){
    client:0,drive:0,office:0,comm:0,email:0,phone:0,tank:0,walk:0,pause:0,private:0,toilet:0,other:0
  };
  for(const e of real){
-   const ms=Math.max(0,e.end-e.start),n=e.name;
+   const ms=Math.max(0,e.end-e.start),n=e.category||e.name;
    if(n.includes('Klientenzeit'))totals.client+=ms;
    else if(n.includes('Fahrt'))totals.drive+=ms;
    else if(n.includes('Fußweg')||n.includes('Zum Auto'))totals.walk+=ms;
@@ -471,7 +504,7 @@ function officeMonth(month){
  const overlap=Math.max(0,work.reduce((v,e)=>v+Math.max(0,e.end-e.start),0)-intervalUnion(work));
  const row=(label,val)=>`<div class="row"><strong>${label}</strong><br>${duration(val)}</div>`;
  screen('📊 Monatsübersicht',`
- <label>Mitarbeiter<br><input value="Mitarbeiter/in – Test" disabled></label>
+ ${employeeInput()}
  <div style="height:10px"></div>
  <label>Monat<br><input id="monthSelect" type="month" value="${selected}" onchange="officeMonth(this.value)"></label>
  <p class="note">Arbeitszeit = Zeiträume ohne Doppelzählung, abzüglich erfasster Pausen und privater Unterbrechungen. Kategorien dürfen sich überschneiden.</p>
@@ -574,11 +607,14 @@ function downloadFile(filename,content,mime){
 function officeDayData(index=null){
  const source=daySource(index),date=dateOfDay(source);
  const selected=source.filter(e=>e.kind!=='marker'&&e.start&&e.end).map(e=>({
-  name:String(e.name||''),kind:String(e.kind||'normal'),start:new Date(e.start).toISOString(),end:new Date(e.end).toISOString(),
+  name:String(e.name||''),category:String(e.category||''),kind:String(e.kind||'normal'),start:new Date(e.start).toISOString(),end:new Date(e.end).toISOString(),
   corrected:!!e.corrected,correctionNote:String(e.correctionNote||''),
-  original:e.original?{start:new Date(e.original.start).toISOString(),end:new Date(e.original.end).toISOString()}:null
+     original:e.original?{start:new Date(e.original.start).toISOString(),end:new Date(e.original.end).toISOString(),...(e.original.name?{name:e.original.name}:{})}:null
  }));
- return {format:'zeiterfassung-office-day',version:1,employee:index===null?'Mitarbeiter/in – Test':String(archive[index]?.employee||'Mitarbeiter/in – Test'),date,entries:selected,exportedAt:new Date().toISOString()};
+   const removed=(index===null?deletedEntries:(archive[index]?.deletedEntries||[]))
+    .filter(e=>isoDate(new Date(e.start))===date)
+    .map(e=>({name:e.name,kind:e.kind,start:new Date(e.start).toISOString(),end:new Date(e.end).toISOString(),deletedAt:new Date(e.deletedAt).toISOString(),note:e.note}));
+  return {format:'zeiterfassung-office-day',version:1,employee:index===null?employeeLabel():String(archive[index]?.employee||employeeLabel()),date,entries:selected,deletedEntries:removed,exportedAt:new Date().toISOString()};
 }
 function exportOfficeDay(index=null){
  const data=officeDayData(index);
@@ -590,10 +626,12 @@ function printDay(index=null){
  if(!data.entries.length){alert('Keine abgeschlossenen Einträge vorhanden.');return}
  const work=data.entries.map(e=>({...e,start:new Date(e.start),end:new Date(e.end)}));
  const total=minusIntervals(work.filter(e=>!excludedTime(e)),work.filter(excludedTime));
- const rows=work.map(e=>`<tr><td>${safeText(e.start.toLocaleDateString('de-DE'))}</td><td>${safeText(hhmm(e.start))}</td><td>${safeText(hhmm(e.end))}</td><td>${safeText(e.name)}${e.corrected?'<br><small>Korrigiert: '+safeText(e.correctionNote)+'</small>':''}</td><td>${safeText(duration(e.end-e.start))}</td></tr>`).join('');
- const w=window.open('','_blank');
+   const rows=work.map(e=>`<tr><td>${safeText(e.start.toLocaleDateString('de-DE'))}</td><td>${safeText(hhmm(e.start))}</td><td>${safeText(hhmm(e.end))}</td><td>${safeText(e.name)}${e.corrected?'<br><small>Korrigiert: '+safeText(e.correctionNote)+'</small>':''}</td><td>${safeText(duration(e.end-e.start))}</td></tr>`).join('');
+   const removedRows=(data.deletedEntries||[]).map(e=>`<li>${safeText(e.name)} (${safeText(hhmm(new Date(e.start)))}–${safeText(hhmm(new Date(e.end)))})</li>`).join('');
+  const removedHtml=removedRows?`<h2>Gelöschte Einträge (Änderungsnachweis)</h2><ul>${removedRows}</ul>`:'';
+  const w=window.open('','_blank');
  if(!w){alert('Firefox hat das Druckfenster blockiert. Bitte Pop-ups für diese Seite erlauben.');return}
- w.document.write(`<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Tagesprotokoll ${safeText(data.date)}</title><style>body{font:12px Arial,sans-serif;margin:28px;color:#222}h1{font-size:20px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #aaa;padding:7px;text-align:left;vertical-align:top}th{background:#eee}small{color:#555}p{margin:12px 0}@media print{button{display:none}}</style></head><body><h1>Tagesprotokoll – ${safeText(data.date)}</h1><p>${safeText(data.employee)}</p><table><thead><tr><th>Datum</th><th>Beginn</th><th>Ende</th><th>Tätigkeit</th><th>Dauer</th></tr></thead><tbody>${rows}</tbody></table><p><strong>Arbeitszeit ohne Doppelzählung:</strong> ${safeText(duration(total))}</p><p><small>Testversion. Bitte vor dem Versand auf Vollständigkeit prüfen.</small></p><button onclick="window.print()">Drucken / Als PDF speichern</button></body></html>`);
+ w.document.write(`<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Tagesprotokoll ${safeText(data.date)}</title><style>body{font:12px Arial,sans-serif;margin:28px;color:#222}h1{font-size:20px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #aaa;padding:7px;text-align:left;vertical-align:top}th{background:#eee}small{color:#555}p{margin:12px 0}@media print{button{display:none}}</style></head><body><h1>Tagesprotokoll – ${safeText(data.date)}</h1><p>${safeText(data.employee)}</p><table><thead><tr><th>Datum</th><th>Beginn</th><th>Ende</th><th>Tätigkeit</th><th>Dauer</th></tr></thead><tbody>${rows}</tbody></table>${removedHtml}<p><strong>Arbeitszeit ohne Doppelzählung:</strong> ${safeText(duration(total))}</p><p><small>Testversion. Bitte vor dem Versand auf Vollständigkeit prüfen.</small></p><button onclick="window.print()">Drucken / Als PDF speichern</button></body></html>`);
  w.document.close();w.focus();
  setTimeout(()=>w.print(),350);
 }
@@ -610,15 +648,16 @@ function importOfficeDay(){
     if(!Number.isFinite(+start)||!Number.isFinite(+end)||end<=start||end-start>36*3600000)throw Error('Ungültige Uhrzeit');
     if(isoDate(start)!==d.date)throw Error('Abweichendes Datum');
     let original=null;
-    if(e.original){const a=new Date(e.original.start),b=new Date(e.original.end);if(!Number.isFinite(+a)||!Number.isFinite(+b))throw Error('Ungültige Korrektur');original={start:a,end:b}}
-    return {name:e.name,kind:e.kind,start,end,corrected:!!e.corrected,correctionNote:String(e.correctionNote||'').slice(0,500),original};
+    if(e.original){const a=new Date(e.original.start),b=new Date(e.original.end);if(!Number.isFinite(+a)||!Number.isFinite(+b))throw Error('Ungültige Korrektur');original={start:a,end:b,...(e.original.name?{name:String(e.original.name)}:{})}}
+    return {name:e.name,category:String(e.category||''),kind:e.kind,start,end,corrected:!!e.corrected,correctionNote:String(e.correctionNote||'').slice(0,500),original};
    });
    const id=d.date+'|'+d.employee;
    if(archive.some(a=>a.officeImportId===id)){
     if(!confirm('Für diesen Mitarbeiter und Tag ist bereits ein Büroimport vorhanden. Vorhandenen Import ersetzen?'))return;
     archive=archive.filter(a=>a.officeImportId!==id);
    }
-   archive.push({date:d.date,entries:imported,officeImportId:id,employee:String(d.employee||'Unbekannt').slice(0,100)});
+   const importedDeleted=Array.isArray(d.deletedEntries)?d.deletedEntries.map(e=>({name:String(e.name||''),category:String(e.category||''),kind:String(e.kind||'normal'),start:new Date(e.start),end:new Date(e.end),deletedAt:new Date(e.deletedAt),note:String(e.note||'')})).filter(e=>Number.isFinite(+e.start)&&Number.isFinite(+e.end)):[];
+    archive.push({date:d.date,entries:imported,deletedEntries:importedDeleted,officeImportId:id,employee:String(d.employee||'Unbekannt').slice(0,100)});
    persist();alert('Tagesprotokoll importiert. Es ist in der Büroansicht und Monatsübersicht verfügbar.');officeDailyList();
   }catch(e){alert('Import nicht möglich: '+e.message)}
  };
@@ -654,7 +693,7 @@ let database=null;
 let writeQueue=Promise.resolve();
 let stateVersion=0;
 function statePayload(){
- return {entries,active,pausedDrive,currentClient,eventViaCarpool,currentEvent,pendingActivity,pendingDrive,officeClientNames,archive,parallelRunning:window._parallel||null,updatedAt:Date.now()};
+ return {entries,active,pausedDrive,currentClient,eventViaCarpool,currentEvent,pendingActivity,pendingDrive,officeClientNames,archive,employeeName,deletedEntries,parallelRunning:window._parallel||null,updatedAt:Date.now()};
 }
 function openDatabase(){
  return new Promise((resolve,reject)=>{
@@ -703,7 +742,9 @@ function restoreData(d){
   currentClient=d.currentClient||currentClient;eventViaCarpool=!!d.eventViaCarpool;currentEvent=d.currentEvent||'';
   pendingActivity=d.pendingActivity||null;pendingDrive=d.pendingDrive||null;
   if(Array.isArray(d.officeClientNames))officeClientNames=d.officeClientNames;
-  if(Array.isArray(d.archive))archive=d.archive.map(day=>({...day,entries:day.entries.map(revive)}));
+  if(Array.isArray(d.archive))archive=d.archive.map(day=>({...day,entries:day.entries.map(revive),deletedEntries:(day.deletedEntries||[]).map(e=>({...e,start:new Date(e.start),end:new Date(e.end),deletedAt:new Date(e.deletedAt)}))}));
+   employeeName=typeof d.employeeName==='string'?d.employeeName:'';
+   deletedEntries=Array.isArray(d.deletedEntries)?d.deletedEntries.map(e=>({...e,start:new Date(e.start),end:new Date(e.end),deletedAt:new Date(e.deletedAt)})):[];
   window._parallel=d.parallelRunning?{...d.parallelRunning,start:new Date(d.parallelRunning.start),drive:revive(d.parallelRunning.drive)}:null;
   return true;
  }catch(e){console.error(e);return false}
